@@ -1,0 +1,69 @@
+{
+  "database": {
+    "host": "localhost",
+    "name": "imagevibeseeker",
+    "user": "postgres",
+    "pass": "yourpassword"
+  },
+  "paths": {
+    "root_folder": "your\\folder\\path"
+  },
+  "clip": {
+    "current_model_label": "Best Quality (ViT-bigG-14)",
+    "device": "dml",
+    "batch_size": 4,
+    "cache_dir": "models",
+    "available_models": {
+      "Best Quality (ViT-bigG-14)": {
+        "model": "ViT-bigG-14",
+        "pretrained": "laion2b_s39b_b160k",
+        "dimension": 1280
+      },
+      "Balanced (ViT-L-14)": {
+        "model": "ViT-L-14",
+        "pretrained": "datacomp_xl_s13b_b90k",
+        "dimension": 768
+      }
+    }
+  },
+  "scores": {
+    "rules": [
+      {
+        "keyword": "favorite",
+        "score": 10
+      },
+      {
+        "keyword": "love",
+        "score": 9
+      },
+      {
+        "keyword": "collection",
+        "score": 8
+      },
+      {
+        "keyword": "pick",
+        "score": 7
+      },
+      {
+        "keyword": "like",
+        "score": 6
+      },
+      {
+        "keyword": "save",
+        "score": 5
+      },
+      {
+        "keyword": "bin",
+        "score": 3
+      },
+      {
+        "keyword": "redflag",
+        "score": 1
+      }
+    ]
+  },
+  "score_range": {
+    "above": 10,
+    "below": 0
+  }
+}

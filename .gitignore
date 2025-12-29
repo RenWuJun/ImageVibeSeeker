@@ -1,0 +1,24 @@
+# Environments
+venv/
+python_local/
+.env
+
+# Models & Data
+models/
+*.lock
+process.lock
+
+# Logs & Temp
+logs/
+*.log
+temp_requirements.txt
+**/__pycache__/
+**/*.pyc
+
+# Internal / Agent Specific
+GEMINI.md
+WIKI.md
+
+# OS Specific
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+streamlit
+pandas
+psycopg2-binary
+torch
+open_clip_torch
+numpy
+Pillow
+click
+tqdm
+send2trash
+PyYAML
+psutil
+filelock
