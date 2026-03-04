@@ -2,6 +2,8 @@
 
 [English] | [简体中文](README_zh.md)
 
+![Image Vibe Seeker UI](assets/IVS_main.png)
+
 **Image Vibe Seeker** is a local, privacy-focused tool for managing massive image libraries.
  It moves beyond filenames and dates, using semantic "vibes" to help you discover, rank, and curate your visual data.
 
