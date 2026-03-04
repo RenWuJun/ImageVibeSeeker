@@ -1,13 +1,27 @@
+# Core App & UI
 streamlit
 pandas
-psycopg2-binary
-torch
-open_clip_torch
-numpy
-Pillow
 click
 tqdm
 send2trash
 PyYAML
 psutil
 filelock
+numpy
+Pillow
+
+# Database
+psycopg2-binary
+
+# AI Engine (Core)
+torch
+open_clip_torch
+timm
+
+# AI Engine (Model Support & Tokenizers)
+# Required for SigLIP 2, MobileCLIP, and other modern architectures
+transformers
+huggingface-hub
+sqlite-vec
+sentencepiece
+protobuf

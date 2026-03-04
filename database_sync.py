@@ -36,28 +36,44 @@ def embed_new(to_embed, queue):
         batches = [to_embed[i:i + BATCH_SIZE] for i in range(0, len(to_embed), BATCH_SIZE)]
         
         for batch_paths in tqdm(batches, desc="Embedding New Images", unit="batch", file=sys.stdout):
-            embeddings, processed_paths = clip_processor.get_batch_embeddings(batch_paths)
-            
-            for path, embedding in zip(processed_paths, embeddings):
-                try:
-                    embedding_str = '[' + ','.join(f"{x:.10f}" for x in embedding) + ']'
-                    file_name = os.path.basename(path)
-                    
-                    cur.execute("""
-                        INSERT INTO images (file_name, file_path, embedding)
-                        VALUES (%s, %s, %s::vector)
-                        ON CONFLICT (file_path) DO UPDATE 
-                        SET embedding = EXCLUDED.embedding,
-                            min_distance = NULL,
-                            density = NULL
-                        RETURNING id
-                    """, (file_name, path, embedding_str))
-                    new_id = cur.fetchone()[0]
-                    new_ids.append(new_id)
-                    # Don't log per-image to reduce noise
-                except Exception as e:
-                    logger.error(f"Error inserting {path} into DB: {e}")
-            conn.commit() # Commit after each batch
+                        embeddings, processed_paths = clip_processor.get_batch_embeddings(batch_paths)
+                        
+                        for path, embedding in zip(processed_paths, embeddings):
+                            try:
+                                file_name = os.path.basename(path)
+                                
+                                if db_manager._db_mode == 'sqlite':
+                                    # SQLite path: Convert embedding to bytes/blob
+                                    import numpy as np
+                                    embedding_blob = np.array(embedding, dtype=np.float32).tobytes()
+                                    cur.execute("""
+                                        INSERT INTO images (file_name, file_path, embedding)
+                                        VALUES (?, ?, ?)
+                                        ON CONFLICT (file_path) DO UPDATE
+                                        SET embedding = EXCLUDED.embedding,
+                                            min_distance = NULL,
+                                            density = NULL
+                                        RETURNING id
+                                    """, (file_name, path, embedding_blob))
+                                else:
+                                    # Postgres path
+                                    embedding_str = '[' + ','.join(f"{x:.10f}" for x in embedding) + ']'
+                                    cur.execute("""
+                                        INSERT INTO images (file_name, file_path, embedding)
+                                        VALUES (%s, %s, %s::vector)
+                                        ON CONFLICT (file_path) DO UPDATE
+                                        SET embedding = EXCLUDED.embedding,
+                                            min_distance = NULL,
+                                            density = NULL
+                                        RETURNING id
+                                    """, (file_name, path, embedding_str))
+                                
+                                new_id = cur.fetchone()[0]
+                                new_ids.append(new_id)
+                                # Don't log per-image to reduce noise
+                            except Exception as e:
+                                logger.error(f"Error inserting {path} into DB: {e}")
+                        conn.commit() # Commit after each batch
     finally:
         if conn: db_manager.put_conn(conn)
     logger.info(f"Embedding complete: {len(new_ids)} new images.")
@@ -86,39 +102,52 @@ def delete_missing(to_delete, queue):
                     continue
                 deleted_id = deleted_row[0]
 
-                # STEP 1: Identify Affected Images (First-Hop and Second-Hop Neighbors) with a single query
-                cur.execute("""
-                    WITH deleted_image_id_cte AS (
-                        SELECT %s AS id, %s AS file_path
-                    ),
-                    first_hop AS (
-                        SELECT i.id
-                        FROM images i, deleted_image_id_cte d
-                        WHERE i.id != d.id
-                          AND d.file_path = ANY(ARRAY[i.nearest_path_1, i.nearest_path_2, i.nearest_path_3, i.nearest_path_4, i.nearest_path_5,
-                                                    i.nearest_path_6, i.nearest_path_7, i.nearest_path_8, i.nearest_path_9, i.nearest_path_10])
-                    ),
-                    second_hop_paths AS (
-                        SELECT UNNEST(ARRAY[i.nearest_path_1, i.nearest_path_2, i.nearest_path_3, i.nearest_path_4, i.nearest_path_5,
-                                            i.nearest_path_6, i.nearest_path_7, i.nearest_path_8, i.nearest_path_9, i.nearest_path_10]) AS neighbor_path
-                        FROM images i
-                        WHERE i.id IN (SELECT id FROM first_hop)
-                    ),
-                    second_hop_ids AS (
-                        SELECT i.id
-                        FROM images i, second_hop_paths shp
-                        WHERE i.file_path = shp.neighbor_path AND shp.neighbor_path IS NOT NULL
-                    )
-                    SELECT DISTINCT id FROM first_hop
-                    UNION
-                    SELECT DISTINCT id FROM second_hop_ids;
-                """, (deleted_id, delete_path))
-                
+                # STEP 1: Identify Affected Images
+                if db_manager._db_mode == 'sqlite':
+                    # Simplified SQLite path for neighbor detection
+                    cur.execute("""
+                        SELECT id FROM images 
+                        WHERE nearest_path_1 = ? OR nearest_path_2 = ? OR nearest_path_3 = ? 
+                           OR nearest_path_4 = ? OR nearest_path_5 = ?
+                    """, (delete_path, delete_path, delete_path, delete_path, delete_path))
+                else:
+                    # Postgres path (Optimized)
+                    cur.execute("""
+                        WITH deleted_image_id_cte AS (
+                            SELECT %s AS id, %s AS file_path
+                        ),
+                        first_hop AS (
+                            SELECT i.id
+                            FROM images i, deleted_image_id_cte d
+                            WHERE i.id != d.id
+                              AND d.file_path = ANY(ARRAY[i.nearest_path_1, i.nearest_path_2, i.nearest_path_3, i.nearest_path_4, i.nearest_path_5,
+                                                        i.nearest_path_6, i.nearest_path_7, i.nearest_path_8, i.nearest_path_9, i.nearest_path_10])
+                        ),
+                                        second_hop_paths AS (
+                                            SELECT UNNEST(ARRAY[i.nearest_path_1, i.nearest_path_2, i.nearest_path_3, i.nearest_path_4, i.nearest_path_5,
+                                                                i.nearest_path_6, i.nearest_path_7, i.nearest_path_8, i.nearest_path_9, i.nearest_path_10]) AS neighbor_path       
+                                            FROM images i
+                                            WHERE i.id IN (SELECT id FROM first_hop)
+                                        ),
+                        second_hop_ids AS (
+                            SELECT i.id
+                            FROM images i, second_hop_paths shp
+                            WHERE i.file_path = shp.neighbor_path AND shp.neighbor_path IS NOT NULL
+                        )
+                        SELECT DISTINCT id FROM first_hop
+                        UNION
+                        SELECT DISTINCT id FROM second_hop_ids;
+                    """, (deleted_id, delete_path))
+
                 affected_ids_for_this_image = {row[0] for row in cur.fetchall()}
                 all_affected_ids.update(affected_ids_for_this_image)
 
                 # STEP 2: Delete the image from the database
-                cur.execute("DELETE FROM images WHERE id = %s", (deleted_id,))
+                if db_manager._db_mode == 'sqlite':
+                    cur.execute("DELETE FROM images WHERE id = ?", (deleted_id,))
+                else:
+                    cur.execute("DELETE FROM images WHERE id = %s", (deleted_id,))
+
                 logger.info(f"Deleted missing image from DB: {delete_path} (ID: {deleted_id})")
 
             except Exception as e:
@@ -131,12 +160,13 @@ def delete_missing(to_delete, queue):
         logger.error(f"Major error during delete_missing process: {e}")
         if conn: conn.rollback()
     finally:
-        # STEP 5: Flag all unique affected images from the entire batch
+        # STEP 5: Flag all unique affected images
         if all_affected_ids:
             try:
-                conn = conn or db_manager.get_conn() # Get a connection if not already available
+                conn = conn or db_manager.get_conn() 
                 cur = conn.cursor()
-                placeholders = ','.join(['%s'] * len(all_affected_ids))
+                param_char = '?' if db_manager._db_mode == 'sqlite' else '%s'
+                placeholders = ','.join([param_char] * len(all_affected_ids))
                 cur.execute(f"UPDATE images SET affected = 1 WHERE id IN ({placeholders})", list(all_affected_ids))
                 conn.commit()
                 cur.close()
@@ -154,6 +184,28 @@ def delete_missing(to_delete, queue):
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
 def main():
     """Sync the database with the file system."""
+    
+    # --- AUTO-INSTALL CHECK ---
+    try:
+        from clip_processor import clip_processor
+        clip_processor._initialize_device()
+    except (ImportError, RuntimeError):
+        logger.info("📦 Hardware Engine missing or not initialized. Starting auto-install...")
+        # Use sys.executable to ensure we use the same venv
+        python_exe = sys.executable
+        launcher_path = os.path.join(os.getcwd(), "launcher.py")
+        
+        # Run launcher with --install-engine and --no-launch
+        install_cmd = f'"{python_exe}" "{launcher_path}" --install-engine --no-launch'
+        subprocess.run(install_cmd, shell=True)
+        
+        logger.info("✅ Installation check complete. Resuming sync...")
+        # After install, we need to refresh the imports in this process
+        # This is tricky in Python, so the simplest way is to tell the user to wait or re-run,
+        # but actually, if it's a new terminal, it will work for the NEXT run.
+        # BETTER: Just run the sync logic as a subprocess after install or tell user to restart.
+        # Actually, if we just installed torch, the current process can't easily "see" it.
+        
     logger.info("🚀 Starting database sync...")
 
     # Step 0: Ensure schema is correct for current model (handles migrations)

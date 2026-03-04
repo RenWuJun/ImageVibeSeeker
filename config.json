@@ -1,28 +1,43 @@
 {
+  "version": "v0.6.0",
   "database": {
     "host": "localhost",
     "name": "imagevibeseeker",
-    "user": "postgres",
-    "pass": "yourpassword"
+    "user": "postgres"
   },
   "paths": {
-    "root_folder": "your\\folder\\path"
+    "root_folder": "C:your\\folder\\path"
   },
   "clip": {
-    "current_model_label": "Best Quality (ViT-bigG-14)",
+    "current_model_label": "Absolute Ceiling (SigLIP2-Giant)",
     "device": "dml",
     "batch_size": 4,
     "cache_dir": "models",
     "available_models": {
-      "Best Quality (ViT-bigG-14)": {
-        "model": "ViT-bigG-14",
-        "pretrained": "laion2b_s39b_b160k",
-        "dimension": 1280
+      "Multilingual & High-Res (SigLIP2-SO400M)": {
+        "model": "ViT-SO400M-16-SigLIP2-384",
+        "pretrained": "webli",
+        "dimension": 1152
       },
-      "Balanced (ViT-L-14)": {
-        "model": "ViT-L-14",
-        "pretrained": "datacomp_xl_s13b_b90k",
+      "Efficiency Standard (MobileCLIP2-S0)": {
+        "model": "MobileCLIP2-S0",
+        "pretrained": "dfndr2b",
+        "dimension": 512
+      },
+      "Performance Standard (MobileCLIP2-L-14)": {
+        "model": "MobileCLIP2-L-14",
+        "pretrained": "dfndr2b",
         "dimension": 768
+      },
+      "Intelligence Standard (ViT-L-14-DFN)": {
+        "model": "ViT-L-14",
+        "pretrained": "dfn2b",
+        "dimension": 768
+      },
+      "Absolute Ceiling (SigLIP2-Giant)": {
+        "model": "ViT-gopt-16-SigLIP2-384",
+        "pretrained": "webli",
+        "dimension": 1536
       }
     }
   },
@@ -63,7 +78,7 @@
     ]
   },
   "score_range": {
-    "above": 10,
-    "below": 0
+    "above": 0,
+    "below": 10
   }
 }

@@ -9,7 +9,7 @@ from components import delete_image_and_get_affected_ids, recompute_affected
 from utils.logger import get_logger
 
 # MUST BE FIRST
-st.set_page_config(page_title="Batch Recursive Delete", layout="wide")
+# st.set_page_config removed
 
 logger = get_logger(__name__)
 
@@ -79,9 +79,9 @@ if 'batch_deleted_count' not in st.session_state:
 
 # FIXED: Load from CONFIG first, then query_params
 score_range = config.get('score_range', {'above': 10, 'below': 0})
-query_params = st.experimental_get_query_params()
-max_score = int(query_params.get("max_score", [str(score_range['above'])] )[0])  # Config > query > 10
-min_score = int(query_params.get("min_score", [str(score_range['below'])] )[0])  # Config > query > 0
+query_params = st.query_params
+max_score = int(query_params.get("max_score", str(score_range['above'])))  # Config > query > 10
+min_score = int(query_params.get("min_score", str(score_range['below'])))  # Config > query > 0
 
 # Row 1: Filters (Clear labels)
 col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
@@ -121,7 +121,8 @@ with col4:
 if new_max_score != score_range.get('above', 10) or new_min_score != score_range.get('below', 0):
     config.update_section('score_range', {'above': new_max_score, 'below': new_min_score})
     config.save_config()
-    st.experimental_set_query_params(max_score=str(new_max_score), min_score=str(new_min_score))
+    st.query_params.max_score = str(new_max_score)
+    st.query_params.min_score = str(new_min_score)
     st.success("Score range saved!")
     logger.info(f"Score range saved: max_score={new_max_score}, min_score={new_min_score}")
 

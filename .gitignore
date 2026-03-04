@@ -7,6 +7,7 @@ python_local/
 models/
 *.lock
 process.lock
+ivs_local.db
 
 # Logs & Temp
 logs/
@@ -18,6 +19,7 @@ temp_requirements.txt
 # Internal / Agent Specific
 GEMINI.md
 WIKI.md
+settings.json
 
 # OS Specific
 .DS_Store

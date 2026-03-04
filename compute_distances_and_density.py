@@ -20,6 +20,10 @@ BATCH_SIZE = config.clip.batch_size # Re-using batch size from clip config
 
 def create_hnsw_index():
     """Create HNSW index for 100x faster k-NN (run ONCE)"""
+    if db_manager._db_mode == 'sqlite':
+        logger.info("⚡ Local Mode (SQLite) uses native sqlite-vec structures. Manual HNSW indexing is not required.")
+        return
+
     conn = db_manager.get_conn()
     cur = conn.cursor()
     try:
@@ -35,7 +39,7 @@ def create_hnsw_index():
         logger.error(f"HNSW index error: {e}")
     finally:
         cur.close()
-        conn.close()
+        db_manager.put_conn(conn)
 
 def compute_for_ids(id_list, batch_size=1000):
     """OPTIMIZED: Batch processing + progress for 100k+"""
