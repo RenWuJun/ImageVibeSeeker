@@ -4,6 +4,8 @@
 
 ![Image Vibe Seeker UI](assets/IVS_main.png)
 
+> **🎥 观看 1 分钟演示视频 (Bilibili): [链接即将上线]**
+
 **调调看图 (Image Vibe Seeker)** 是一款专注于隐私保护的本地图像库管理工具。
 它超越了传统的“文件名”或“修改日期”的检索方式，利用 AI 语义“意境” (Vibes) 帮助你发现、评分和整理海量的视觉数据。
 
